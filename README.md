@@ -43,7 +43,7 @@ bl = Flasher (port, type=0)
 #bl.run ()
 
 
-from Remote.machine_stm8 import ADC
+from PyroFlash.machine_stm8 import ADC
 
 adc = ADC (ADC.CORE_VREF)
 
@@ -56,7 +56,7 @@ for i in ADC.channels:
 
 SPI Flash example 
 ```python
-from Remote.Flashers.SPIFlash import Flasher 
+from PyroFlash.Flashers.SPIFlash import Flasher 
 from machine import Pin
 
 bl = Flasher (mosi="B5", sck="B12", miso="B4", cs="B2")
