@@ -1,4 +1,4 @@
-from ..BaseBridge import *
+from PyroFlash.Core.BaseBridge import *
 
 class Pin (RemotePerif):
   OUT = 0

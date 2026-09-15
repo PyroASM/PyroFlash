@@ -1,4 +1,6 @@
-from ..BaseBridge import *
+from PyroFlash.Core.BaseBridge import *
+
+import time
 
 class Flash(RemotePerif):
   def __init__ (self, *args, comm=None):
@@ -9,7 +11,7 @@ class Flash(RemotePerif):
 
   def rop_disable(self):
     self.unlock_data()
-    self.option_write ("0000ff00ff00ff00ff00ff")
+    self.option_write (bytearray.fromhex("0000ff00ff00ff00ff00ff"))
     print ("new option status", self.option_status())
 
   def print_status(self):
@@ -33,8 +35,6 @@ class Flash(RemotePerif):
     self.CR2.write(0x01)
     self.NCR2.write(0xfe)
 
-    block=toBytes(block)
-
     if len (block)<64:
       b=bytearray (64)
       b[:len(block)]=block [:]
@@ -42,6 +42,8 @@ class Flash(RemotePerif):
     
     for i,b in enumerate (block):
       self.mem8.bwrite (addr+i, b)
+
+    time.sleep_ms(100)
 
   def poll (self):
     return self.IAPSR.read() & 4
@@ -52,22 +54,26 @@ class Flash(RemotePerif):
    
     self.mem8.bwrite(addr, w.to_bytes(4,"big"))
 
+    time.sleep_ms(100)
+
   def erase_block (self, addr):
     self.CR2.write(0x20)
     self.NCR2.write(0xdf)
    
     self.mem8.bwrite(addr, bytearray (4))
+
+    time.sleep_ms(100)
   
   def byte_write (self, addr, b):
     self.mem8.bwrite(addr,b)
+
+    time.sleep_ms(100)
   
   def option_write (self, block):
     addr = 0x4800
     
     self.CR2.write(0x80)
     self.NCR2.write(0x7f)
-
-    block=toBytes(block)
 
     for i,b in enumerate (block):
       self.byte_write (addr+i, b)

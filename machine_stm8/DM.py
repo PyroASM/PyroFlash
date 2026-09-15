@@ -1,5 +1,6 @@
-from ..BaseBridge import *
+from PyroFlash.Core.BaseBridge import *
 
+# stm8 Debug Module 
 class DM (RemotePerif):
   RAM = 0
   ROM = 1
@@ -14,7 +15,7 @@ class DM (RemotePerif):
 
   def unlock(self):
     self.SWIM_CSR.write (0x25)#dm srst prior
-    print ("got access with SWIM_CSR status", hex(self.SWIM_CSR.read()))
+    print ("SWIM_CSR:", hex(self.SWIM_CSR.read()))
 
   def remap_ivt (self, dst):
      if dst == self.RAM:
@@ -45,8 +46,8 @@ class DM (RemotePerif):
      self.flush_cpu()
   
   def print_regs (self):
-     print ("A: ", str(self.A))
-     print ("PC:", str (self.PC))
+     print ("A: ", self.A)
+     print ("PC:", self.PC)
      print ("X: ", self.X)
      print ("Y: ", self.Y)
      print ("SP:", self.SP)

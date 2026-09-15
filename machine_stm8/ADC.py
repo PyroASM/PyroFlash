@@ -1,4 +1,4 @@
-from ..BaseBridge import *
+from PyroFlash.Core.BaseBridge import *
 
 class ADC (RemotePerif):
   CORE_VREF = 7

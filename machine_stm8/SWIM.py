@@ -1,4 +1,4 @@
-from ..BaseBridge import *
+from PyroFlash.Core.BaseBridge import *
 
 import time
 import machine
@@ -14,35 +14,57 @@ NACK = SWIM_0
 
 SWIM_bit = (SWIM_0,SWIM_1)
 
+
+# to remap stm32 pins
+def af_for_spi (pin, n):
+  if not isinstance(pin, str):
+    pin = pin.name() if hasattr(pin, "name") else str(pin)
+  if not isinstance(n, int):
+    n = spi_id(n)
+  target = "SPI" + str(n)
+  for af in Pin.af_list(Pin(pin)):
+    if target in af.name():
+      return af.index()
+
+  raise Exception ("AF not found for Pin: "+ str (pin)+", SPI: "+ str(n))
+
+def spi_id(spi_obj):
+  if isinstance(spi_obj, int):
+    return spi_obj
+  return int(str(spi_obj).split("(")[1].split(",")[0])
+
+
 class SWIM_SPI (BaseBridge):
   rst=None
-  def __init__(self, comm, *args, rst=None, **kw):
+  def __init__(self, comm, *args, rst=None, mosi=None, miso=None, sck=None, **kw):
     super ().__init__(*args, bsz=255, **kw)
 
     machine.freq(64000000)
     #SPI must have exact frequency of 8MHz
 
-    self.comm = comm
-
-    self.mosi = Pin(comm["MOSI"])
-    self.miso = Pin(comm["MISO"])
-    self.sck = Pin(comm["SCK"]) #unused, stub for softspi 
+    self.mosi = Pin(mosi)
+    self.miso = Pin(miso)
+    self.sck = Pin(sck) #unused, stub for softspi 
     
-    self.spi = SPI(self.comm["SPI_n"], baudrate=8_000_000)
+    if type(comm) is int:
+      comm = SPI(comm)
+
+    comm.init(baudrate=8_000_000)
+    self.comm = comm
     self.pins_afod ()
 
     if rst:
       self.rst=Pin(rst, Pin.OUT, value=1)
 
-    RemotePerif.mem8 = self 
+    RemotePerif.mem8 = self  # shortcut for periferals 
 
-  def start (self, type=0, dbg=0):
+  def start (self, dbg=0):
     if self.rst:
       time.sleep_ms(100)
       self.rst.value(0)
       time.sleep_ms(100)
     
-    self.swim_init(type)
+    self.swim_init(method=0)
     rv=self.swim_comm_rst(dbg=dbg)
     if not rv:
       raise Exception ("No answer")
@@ -52,23 +74,26 @@ class SWIM_SPI (BaseBridge):
     
     if self.rst:
       self.rst.value(1)
-      sleep_ms(10)
+      time.sleep_ms(10)
 
   def pins_afod(self):
-    self.mosi.init(mode=Pin.AF_OD, pull=Pin.PULL_UP, af=self.comm["MOSI_AF"])
-    self.miso.init(mode=Pin.AF_OD, pull=Pin.PULL_UP, af=self.comm["MISO_AF"])
+    self.comm.init()
+
+    self.mosi.init(mode=Pin.AF_OD, pull=Pin.PULL_UP, alt=af_for_spi(self.mosi,self.comm))
+    self.miso.init(mode=Pin.AF_OD, pull=Pin.PULL_UP, alt=af_for_spi(self.miso,self.comm))
 
   def pins_od(self):
+    self.comm.deinit()
     self.mosi.init(mode=Pin.OUT_OD, pull=Pin.PULL_UP)
     self.miso.init(mode=Pin.IN, pull=Pin.PULL_UP)
 
-  def swim_init(self, type=0):
-   if type==0:
+  def swim_init(self, method=0):
+   if method==0:
     self.softspi = SoftSPI (16000, mosi=self.mosi, miso=self.miso, sck=self.sck)
     self.pins_od()
     self.softspi.write (bytearray.fromhex("00ff00ff00ff00ff00f0f0f0f0ffffffff"))
   
-   elif type==1:
+   elif method==1:  # don't work need dbg
     self.pins_od()
     timing = (500, 500, 1000, 1000)
     bitstream(self.mosi, 0, timing, b"\x07\x10")
@@ -80,7 +105,7 @@ class SWIM_SPI (BaseBridge):
     sz = 64//4+10
     seq = "00"*sz + "ff"*sz
     seq = bytearray.fromhex(seq)
-    self.spi.write_readinto(seq, seq)
+    self.comm.write_readinto(seq, seq)
 
     if dbg:
       print (seq.hex())
@@ -117,7 +142,7 @@ class SWIM_SPI (BaseBridge):
      if rv:
        p += bytearray.fromhex("ff"*int(rv*3.1))
 
-     self.spi.write_readinto(p,p)
+     self.comm.write_readinto(p,p)
 
      if dbg: print (p.hex())
      
@@ -160,13 +185,7 @@ class SWIM_SPI (BaseBridge):
      pulses = [0 if v>=9 else 1 for v in pulses]
      return pulses
 
-  def get_byte (self, bits):
-     rv = 0
-     for i in range (1,9):
-       rv <<= 1
-       rv |= bits[i]
-     return rv
-
+  
   def swim_rst(self):
     return self.transfer(0,3)
 
@@ -225,7 +244,7 @@ class SWIM_SPI (BaseBridge):
         p += ACK
       p += bytearray.fromhex("ffff"*20) #10 bits with extra gap
 
-      self.spi.write_readinto(p,p)
+      self.comm.write_readinto(p,p)
       if dbg: print (p.hex())
 
       bits = self.get_bits(p)
@@ -233,7 +252,7 @@ class SWIM_SPI (BaseBridge):
       bits = bits [1:] # omit ack/nack loopback bit
       rv [i] = self.get_byte(bits)
 
-    self.spi.write(ACK)
+    self.comm.write(ACK)
     return rv
   
   bwrite = wof
