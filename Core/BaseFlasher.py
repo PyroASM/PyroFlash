@@ -138,9 +138,16 @@ class BaseFlasher:
       file, addr = addr, file
 
     if type (file) is str:
+     if file.lower().endswith(".ihex"):
+      file=open(file, "r")
+      file=ReceivedFile (source=file)
+     else:
       file=open(file, "rb")
+
     elif file is None:
-      file=RecievedFile()
+      file=ReceivedFile ()
+
+    if type (file) is ReceivedFile:
       file.recv()  # if ihex retrive addr
       if file.enc == "ihex":
         addr = file.addr

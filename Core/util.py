@@ -169,8 +169,27 @@ import select, time, binascii
 from sys import stdin
 from micropython import RingIO
 
-class RecievedFile:
-  def __init__(self):
+class ReceivedFile:
+  def __init__(self, source=stdin):
+    self.addr = None
+    self.enc=None
+
+    self.fifo = RingIO(1023)
+
+    self.line = ""
+
+    self.started = False
+
+    self.source = source
+
+    self.buffer = bytearray(4)
+    self.bidx= 0
+
+    if source is not stdin:
+
+      return 
+
+
     try:
       import pyb
       usb = pyb.USB_VCP()
@@ -178,23 +197,10 @@ class RecievedFile:
     except:
       pass
 
-
     self.p = select.poll()
-    self.p.register(stdin, select.POLLIN)
-
-    self.addr = None
-    self.enc=None
-
-    self.fifo = RingIO(1023)
-
-    self.buffer = bytearray(4)
-    self.bidx= 0
-
-    self.line = ""
+    self.p.register(source, select.POLLIN)
 
     self.flush_stdin()
-
-    self.started = False
 
     print("File uploader is waiting for ihex or base64 data")
 
@@ -213,7 +219,7 @@ class RecievedFile:
     return True
 
   def detect_encoding(self):
-    b = stdin.read(1)
+    b = self.source.read(1)
     if b == ":":
       self.enc = "ihex"
       self.line = b
@@ -226,7 +232,7 @@ class RecievedFile:
 
   def recv(self):
     if self.started:
-      if not self.poll():
+      if self.source is stdin and not self.poll():
         return False 
     else:
       self.detect_encoding()
@@ -235,20 +241,25 @@ class RecievedFile:
     
     if self.enc == "base64":
       for i in range (self.bidx, 4):
-        b = stdin.read(1)
+        b = self.source.read(1)
 
         if not b:
           break
 
         self.put_byte_b64 (b)
 
-        if not self.poll():
+        if self.source is stdin and not self.poll():
            break
-    else:
-      line = stdin.readline()
+
+    elif self.enc == "ihex":
+      line = self.source.read(11) # reading header only 
       if self.line:
         line = self.line + line
         self.line = ""
+
+      if line[7:9] != "01": # skip for last line which has no newline char
+        line += self.source.readline()
+
       offs, data = decode_ihex_line (line)
       if offs is None:
        if data is None:
@@ -259,6 +270,9 @@ class RecievedFile:
         return self.recv()  # we need to return some data after addr stage 
       elif data is not None:
         self.fifo.write(data)
+
+    else:
+      raise Exception (str(self.enc))
 
     return True
 

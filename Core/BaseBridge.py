@@ -101,6 +101,9 @@ class RemotePerif:
     if mem8:
       self.mem8 = mem8
 
+    if self.mem8 is None:
+       raise Exception ("Any RemotePerif needs SWIM object to be created first")
+
   def defregs (self, s=None, b=None):
    base = b or self.base
 
