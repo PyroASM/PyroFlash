@@ -11,25 +11,25 @@ class Flasher (BaseFlasher):
   kw={}
   erased_value = 0
   pad_block=True
+  autoclear=False # stm8 clears blocks that are going to flash 
   def __init__(self, comm, *args, type=0, **kw):
-    self.comm = comm
+    self.SWIM = SWIM.SWIM(comm, **kw)
     self.type = type 
-    super ().__init__(*args, autoclear=False, **kw)
+    super ().__init__(*args)
 
   def start(self):
-    self.SWIM = SWIM(self.comm,dbg=self.dbg)
+    self.SWIM.start()
 
-    self.SWIM.start(type=self.type, dbg=self.dbg)
-
-    self.dm = DM(comm=self.SWIM)
+    self.dm = DM.DM(comm=self.SWIM)
     self.dm.unlock()
     self.dm.stall_cpu()
     self.dm.print_regs()
 
-    self.Flash= Flash (comm=self.SWIM)
-    print (self.Flash.option_status())
+    self.Flash= Flash.Flash (comm=self.SWIM)
+    print ("Options:", self.Flash.option_status())
 
     self.Flash.unlock_flash()
+    print ("Flash unlocked, status:")
     self.Flash.print_status()
 
   def WM (self, addr, data):
@@ -45,6 +45,9 @@ class Flasher (BaseFlasher):
 
   def run(self):
     self.SWIM.swim_rst()
+
+  def RU (self):
+    self.Flash.rop_disable()
     
 
 STM8 = Flasher 

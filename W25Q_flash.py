@@ -17,7 +17,8 @@ class Flasher (BaseFlasher):
        spi = SPI(spi, **kw)
 
      if type (cs) in (str,int):
-       cs = Pin(cs, Pin.OUT, value=1)
+       cs = Pin(cs)
+     cs.init(Pin.OUT, value=1)
 
      self.spi = spi
      self.cs = cs
