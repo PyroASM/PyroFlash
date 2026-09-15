@@ -13,20 +13,20 @@ SPI FLASH
 
 Currently STM32F411 blackpill Micropython board is tested 
 
-firmware sources:
-files: binary or .ihex
-stdin: base64 or ihex (detected by ":")
-raw objects: bytes, bytearray, memoryview 
+firmware sources:  
+files: binary or .ihex  
+stdin: base64 or ihex (detected by ":")  
+raw objects: bytes, bytearray, memoryview  
 
 
 Flashing examples
 
-use file=None to read base64 or ihex from stdin
-or specify file name
+use file=None to read base64 or ihex from stdin  
+or specify file name  
 
-if no addr specified and not ihex, default flash org used 
+if no addr specified and not ihex, default flash org used  
 
-keyword args are bypassed to init() of communication object (UART, SPI, SoftSPI)
+keyword args are bypassed to init() of communication object (UART, SPI, SoftSPI)  
 
 STM32F103
 ```python
